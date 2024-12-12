@@ -48,6 +48,12 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/jobs", async (req, res) => {
+      const newJob = req.body;
+      const result = await jobsCollection.insertOne(newJob);
+      res.send(result);
+    });
+
     // job application api
     app.get("/job-application", async (req, res) => {
       const email = req.query.email;
