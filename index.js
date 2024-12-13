@@ -35,7 +35,13 @@ async function run() {
       .db("jobPortal")
       .collection("job_applications");
 
+    // jobs related apis
     app.get("/jobs", async (req, res) => {
+      const email = req.query.email;
+      let query = {};
+      if (email) {
+        query = { hr_email: email };
+      }
       const cursor = jobsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -75,8 +81,27 @@ async function run() {
     });
 
     app.post("/job-applications", async (req, res) => {
-      const application = req.body;
+      // const application = req.body;
       const result = await jobApplicationCollection.insertOne(application);
+      // not the best way(use Aggregate)
+      // const id = application.job.id;
+      // const query = { _id: new ObjectId(id) };
+      // const job = await jobsCollection.findOne(query);
+      // // console.log(job)
+      // let newCount = 0;
+      // if (job.applicationCount) {
+      //   newCount = job.applicationCount + 1;
+      // } else {
+      //   newCount = 1;
+      // }
+      // // now update the job info
+      // const filter = { _id: new ObjectId(id) };
+      // const updateDoc = {
+      //   $set: {
+      //     applicationCount: newCount,
+      //   },
+      // };
+      // const updateResult = await jobsCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
   } finally {
