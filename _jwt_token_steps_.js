@@ -19,7 +19,11 @@
    })
  );
 
+
  *
+ in the client side: use axios get, post, delete, patch for secure apis and must use: {withCredentials: true}
+
+
  * 4. validate the token in the server site:
  * if valid: provide data
  * if not valid: logout
