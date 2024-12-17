@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const app = express();
 require("dotenv").config();
-const port = process.env.port || 5000;
+const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(
@@ -15,6 +15,27 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// const logger = (req, res, next) => {
+//   console.log("Inside the logger");
+//   next();
+// };
+
+const verifyToken = (req, res, next) => {
+  // console.log("Inside verify token middleware");
+  const token = req?.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.i7pwp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -56,15 +77,24 @@ async function run() {
     });
 
     // auth related apis
-    app.post("/jwt", async (req, res) => {
+    app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_SECRET, {
-        expiresIn: "1hr",
+        expiresIn: "5hr",
       });
       res
         .cookie("token", token, {
           httpOnly: true,
           secure: false, // http://localhost:5173/login
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: false,
         })
         .send({ success: true });
     });
@@ -83,9 +113,14 @@ async function run() {
     });
 
     // job application api
-    app.get("/job-application", async (req, res) => {
+    app.get("/job-application", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { applicant_email: email };
+
+      if (req.user.email !== req.query.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
       console.log("cookies", req.cookies);
       const result = await jobApplicationCollection.find(query).toArray();
 

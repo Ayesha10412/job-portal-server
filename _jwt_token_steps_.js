@@ -28,4 +28,8 @@
  * if valid: provide data
  * if not valid: logout
  *
+ * 
+ *  check right user accessing his/her own data based on permission
+ * 
+ * 
  */
