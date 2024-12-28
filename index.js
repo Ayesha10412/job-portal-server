@@ -9,7 +9,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "http://localhost:5000"],
     credentials: true,
   })
 );
@@ -64,23 +64,11 @@ async function run() {
       .db("jobPortal")
       .collection("job_applications");
 
-    // jobs related apis
-    app.get("/jobs", async (req, res) => {
-      const email = req.query.email;
-      let query = {};
-      if (email) {
-        query = { hr_email: email };
-      }
-      const cursor = jobsCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
     // auth related apis
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_SECRET, {
-        expiresIn: "5hr",
+        expiresIn: "365d",
       });
       res
         .cookie("token", token, {
@@ -109,6 +97,22 @@ async function run() {
     app.post("/jobs", async (req, res) => {
       const newJob = req.body;
       const result = await jobsCollection.insertOne(newJob);
+      res.send(result);
+    });
+    // jobs related apis
+    app.get("/jobs", async (req, res) => {
+      const sort = req.query?.sort;
+      const email = req.query.email;
+      let query = {};
+      let sortQuery = {};
+      if (email) {
+        query = { hr_email: email };
+      }
+      if (sort == "true") {
+        sortQuery = { "salaryRange.min": -1 };
+      }
+      const cursor = jobsCollection.find(query).sort(sortQuery);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -140,39 +144,47 @@ async function run() {
 
     app.get("/job-applications/jobs/:job_id", async (req, res) => {
       const jobId = req.params.job_id;
+      console.log(jobId);
+      // const query = { job_id: new ObjectId(jobId) };
       const query = { job_id: jobId };
       const result = await jobApplicationCollection.find(query).toArray();
+      console.log(result);
       res.send(result);
     });
 
     app.post("/job-applications", async (req, res) => {
-      // const application = req.body;
+      const application = req.body;
       const result = await jobApplicationCollection.insertOne(application);
-      // not the best way(use Aggregate)
-      // const id = application.job.id;
-      // const query = { _id: new ObjectId(id) };
-      // const job = await jobsCollection.findOne(query);
-      // // console.log(job)
-      // let newCount = 0;
-      // if (job.applicationCount) {
-      //   newCount = job.applicationCount + 1;
-      // } else {
-      //   newCount = 1;
-      // }
-      // // now update the job info
-      // const filter = { _id: new ObjectId(id) };
-      // const updateDoc = {
-      //   $set: {
-      //     applicationCount: newCount,
-      //   },
-      // };
-      // const updateResult = await jobsCollection.updateOne(filter, updateDoc);
+      console.log(result);
+      // Not the best way (use aggregate)
+      // skip --> it
+      const id = application.job_id;
+      const query = { _id: new ObjectId(id) };
+      const job = await jobsCollection.findOne(query);
+      let newCount = 0;
+      if (job.applicationCount) {
+        newCount = job.applicationCount + 1;
+      } else {
+        newCount = 1;
+      }
+
+      // now update the job info
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          applicationCount: newCount,
+        },
+      };
+
+      const updateResult = await jobsCollection.updateOne(filter, updatedDoc);
+
       res.send(result);
     });
 
     app.patch("/job-applications/:id", async (req, res) => {
       const id = req.params.id;
       const data = req.body;
+      console.log(data);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
